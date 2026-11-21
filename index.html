@@ -560,23 +560,25 @@ var CVS = (function () {
     document.addEventListener('click', function (ev) { if (!ev.target.closest('#cvPanel,#cvApps')) document.getElementById('cvPanel').classList.remove('on'); });
     probe();
   }
-  /* ---------- nút đồng bộ Google Drive ---------- */
-  function mountSync(SY) {
-    if (!SY || !SY.enabled() || document.getElementById('cvSync')) return;
-    var h = document.querySelector('header'), b = document.getElementById('cvApps'); if (!h) return;
-    var st = document.createElement('style'); st.textContent = '#cvSync{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:inherit;border-radius:16px;padding:3px 10px 3px 8px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-left:8px;flex:none}#cvSync:hover{background:rgba(255,255,255,.2)}#cvSync i{font-style:normal;font-size:14px}#cvSync.chua,#cvSync.loi{background:#fff4e5;color:#7a4b00;border-color:#f0c36d}#cvSync.dang i{animation:cvspin 1s linear infinite;display:inline-block}@keyframes cvspin{to{transform:rotate(360deg)}}@media(max-width:760px){#cvSync span{display:none}}';
-    document.head.appendChild(st);
-    var btn = document.createElement('button'); btn.id = 'cvSync'; btn.type = 'button';
-    var h1 = h.querySelector('h1'); if (h1 && h1.nextSibling) h.insertBefore(btn, h1.nextSibling); else h.appendChild(btn);
-    function fmt(t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
-    SY.on(function (s) {
-      btn.className = s.state; btn.title = (s.msg || '') + ' · Dữ liệu mã hóa được lưu trong Google Drive của bạn (thư mục ẩn của ứng dụng).';
-      btn.innerHTML = s.state === 'dang' ? '<i>⟳</i><span>Đang đồng bộ…</span>' : s.state === 'xong' ? '<i>☁</i><span>Đã đồng bộ ' + fmt(s.at) + '</span>' : s.state === 'loi' ? '<i>⚠</i><span>Lỗi đồng bộ</span>' : '<i>☁</i><span>Đồng bộ Google Drive</span>';
-    });
-    btn.addEventListener('click', function () { var s = SY.st(); (s.state === 'chua' || s.state === 'loi' ? SY.connect() : SY.now()).catch(function (e) { alert('Không đồng bộ được: ' + e.message); }); });
-    SY.start();
+  /* ---------- đồng bộ Google Drive: chạy nền; nút nằm trên ribbon của từng phần mềm ---------- */
+  function mountSync(SY) { if (SY && SY.enabled()) SY.start(); }
+  function syncGuide() {
+    var d = document.getElementById('cvGuide');
+    if (!d) { document.body.insertAdjacentHTML('beforeend', '<div id="cvGuide" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10001;display:flex;align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto"><div style="background:#fff;color:#1d2939;border-radius:12px;max-width:820px;width:100%;padding:18px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);font-size:14px;line-height:1.55"><div style="display:flex;align-items:center;margin-bottom:6px"><b style="flex:1;font-size:17px">☁ Bật đồng bộ Google Drive cho 3 phần mềm</b><button data-cvgx="1" style="width:auto">✕</button></div><div id="cvGuideB"></div></div></div>'); d = document.getElementById('cvGuide'); d.addEventListener('click', function (ev) { if (ev.target === d || ev.target.closest('[data-cvgx]')) d.style.display = 'none'; }); }
+    document.getElementById('cvGuideB').innerHTML =
+      '<p style="margin:0 0 8px;color:#475467">Đăng nhập giữa 3 phần mềm trên <b>cùng máy, cùng trình duyệt</b> đã thông suốt sẵn (không cần Google). Google Drive dùng để <b>mang dữ liệu sang máy khác</b> (máy công ty ↔ máy nhà ↔ laptop): dữ liệu vẫn mã hóa, nằm trong thư mục ẩn của chính tài khoản Google của bạn.</p>' +
+      '<p style="margin:0 0 6px"><b>Làm 1 lần (≈10 phút) để lấy “Google Client ID”:</b></p><ol style="margin:0 0 10px;padding-left:20px">' +
+      '<li>Mở <code>https://console.cloud.google.com</code>, đăng nhập Gmail của bạn → chọn <b>Select a project → New project</b>, đặt tên <i>CongViec</i> → Create.</li>' +
+      '<li>Menu ☰ → <b>APIs &amp; Services → Library</b> → tìm <b>Google Drive API</b> → <b>Enable</b>.</li>' +
+      '<li><b>APIs &amp; Services → OAuth consent screen</b> (Google Auth Platform): User type <b>External</b>; App name <i>Phan mem cong viec</i>; email hỗ trợ = Gmail của bạn → Save. Mục <b>Audience / Test users</b> → <b>Add users</b> → thêm các Gmail sẽ dùng đồng bộ.</li>' +
+      '<li><b>Credentials → Create credentials → OAuth client ID</b> → Application type <b>Web application</b> → mục <b>Authorized JavaScript origins</b> bấm Add URI, dán đúng: <code>https://congviecxda.github.io</code> → Create.</li>' +
+      '<li>Chép chuỗi <b>Client ID</b> (dạng <code>1234…apps.googleusercontent.com</code>). <i>Không cần</i> Client secret.</li>' +
+      '<li>Mở lần lượt <b>3 công cụ chủ sở hữu</b> (Giao khoán, Hợp đồng A–B, Quản lý công trình) → nạp file khóa → dán vào ô <b>Google Client ID</b> → <b>Tạo gói phát hành</b> → tải <code>config.js</code> mới lên 3 repo.</li>' +
+      '<li>Mở phần mềm, Ctrl+F5 → bấm ô <b>☁ Đồng bộ</b> trên ribbon → chọn Gmail → <b>Cho phép</b>. Làm như vậy trên mỗi máy; từ đó dữ liệu tự đồng bộ.</li></ol>' +
+      '<p style="margin:0;color:#667085;font-size:13px">Ghi chú: nếu Google báo “ứng dụng chưa được xác minh”, bấm <b>Nâng cao → Tiếp tục</b> (ứng dụng của chính bạn). Phạm vi quyền chỉ là thư mục dữ liệu riêng của ứng dụng (drive.appdata) – không đọc được file khác trong Drive của bạn.</p>';
+    d.style.display = 'flex';
   }
-  return { save: save, load: load, clear: clear, apps: list, openApp: open, probe: probe, mountUI: mountUI, mountSync: mountSync };
+  return { save: save, load: load, clear: clear, apps: list, openApp: open, probe: probe, mountUI: mountUI, mountSync: mountSync, syncGuide: syncGuide };
 })();
 
 /* ===== KHO DỮ LIỆU DÙNG CHUNG cho các phần mềm trên congviecxda.github.io =====
@@ -638,7 +640,9 @@ function CVSTORE(X) {
     create: function (text, m) { var id = uid(); LS.setItem(CUR, id); return docs.save(text, m).then(function () { return id; }); },
     remove: function (id) { return getJ(IDX(), []).then(function (L) { L = (L || []).filter(function (x) { return x.id !== id; }); rawDel(DOC(id)); if (cur() === id) LS.removeItem(CUR); return setJ(IDX(), L); }); },
     read: function (a, id) { var r = LS.getItem(DOC(id, a)); return r ? dec(r).then(function (t) { return JSON.parse(t); }) : Promise.resolve(null); },
-    listOf: function (a) { return list(a); }
+    listOf: function (a) { return list(a); },
+    /* ghi hồ sơ của phần mềm khác (cùng bộ khóa) – dùng cho đồng bộ thông tin công trình từ PM Quản lý công trình */
+    write: function (a, id, obj) { if (!LS.getItem(DOC(id, a))) return Promise.reject(new Error('Không tìm thấy hồ sơ.')); return enc(JSON.stringify(obj)).then(function (e) { rawSet(DOC(id, a), e); return getJ(IDX(a), []); }).then(function (L) { L = L || []; var x = L.filter(function (y) { return y.id === id; })[0]; if (x) { x.sua = now(); x.ngoai = now(); } return setJ(IDX(a), L); }); }
   };
   /* ---------- công trình dùng chung ---------- */
   var ct = {
@@ -782,11 +786,11 @@ var HOST={
  libLoad:function(name){return ST.libLoad(name)},
  libSave:function(name,text){return ST.libSave(name,text)},
  /* nhiều hồ sơ · công trình dùng chung · chuyển giao giữa các phần mềm · đồng bộ */
- docs:{list:function(a){return ST.docs.list(a)},cur:function(){return ST.docs.cur()},open:function(id){return ST.docs.open(id)},create:function(t,m){return ST.docs.create(t,m)},remove:function(id){return ST.docs.remove(id)},read:function(a,id){return ST.docs.read(a,id)},listOf:function(a){return ST.docs.listOf(a)}},
+ docs:{list:function(a){return ST.docs.list(a)},cur:function(){return ST.docs.cur()},open:function(id){return ST.docs.open(id)},create:function(t,m){return ST.docs.create(t,m)},remove:function(id){return ST.docs.remove(id)},read:function(a,id){return ST.docs.read(a,id)},listOf:function(a){return ST.docs.listOf(a)},write:function(a,id,o){return ST.docs.write(a,id,o)}},
  ct:{list:function(){return ST.ct.list()},save:function(L){return ST.ct.save(L)},upsert:function(o){return ST.ct.upsert(o)}},
  handoff:{put:function(o){return ST.handoff.put(o)},take:function(to){return ST.handoff.take(to)}},
  onRemote:function(f){ST.onRemote(f)},
- sync:{st:function(){return ST.sync.st()},now:function(){return ST.sync.now()},connect:function(){return ST.sync.connect()},enabled:function(){return ST.sync.enabled()}},
+ sync:{st:function(){return ST.sync.st()},now:function(){return ST.sync.now()},connect:function(){return ST.sync.connect()},enabled:function(){return ST.sync.enabled()},on:function(f){ST.sync.on(f)},guide:function(){CVS.syncGuide()}},
  encryptExport:function(text){return GKC.encData(DK,text).then(function(e){return 'So quan ly cong trinh - du lieu ma hoa\n'+e+'\n'})},
  decryptImport:function(text){var t=String(text).trim();if(t.charAt(0)==='{'||t.charAt(0)==='[')return Promise.resolve(t);var m=/GKDATA1\.[\s\S]+/.exec(t);if(!m)return Promise.reject(new Error('File không đúng định dạng.'));return GKC.decData(DK,m[0])},
  /* kho ảnh (CCCD…) – IndexedDB trên máy, mỗi ảnh mã hóa AES-GCM bằng khóa dữ liệu */
