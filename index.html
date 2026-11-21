@@ -596,7 +596,7 @@ function CVSTORE(X) {
   function uid() { return 'h' + now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function meta() { try { return JSON.parse(LS.getItem('cv_meta') || '{}') || {}; } catch (e) { return {}; } }
   function setMeta(m) { try { LS.setItem('cv_meta', JSON.stringify(m)); } catch (e) {} }
-  function touch(key, del) { if (!SYNC_RE.test(key)) return; var m = meta(); m[key] = del ? { t: now(), del: 1 } : { t: now() }; setMeta(m); SY.dirty(); }
+  function touch(key, del) { if (!SYNC_RE.test(key)) return; var m = meta(); m[key] = del ? { t: now(), del: 1 } : { t: now() }; setMeta(m); if (SY) SY.dirty(); }
   function rawSet(key, v) { LS.setItem(key, v); touch(key); }
   function rawDel(key) { LS.removeItem(key); touch(key, true); }
   function getJ(key, def) { var r = LS.getItem(key); return r ? dec(r).then(function (t) { try { return JSON.parse(t); } catch (e) { return def; } }) : Promise.resolve(def); }
