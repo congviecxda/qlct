@@ -664,7 +664,7 @@ function CVSTORE(X) {
     read: function (a, id) { var r = LS.getItem(DOC(id, a)); return r ? dec(r).then(function (t) { return JSON.parse(t); }) : Promise.resolve(null); },
     listOf: function (a) { return list(a); },
     /* ghi hồ sơ của phần mềm khác (cùng bộ khóa) – dùng cho đồng bộ thông tin công trình từ PM Quản lý công trình */
-    write: function (a, id, obj) { if (!LS.getItem(DOC(id, a))) return Promise.reject(new Error('Không tìm thấy hồ sơ.')); return enc(JSON.stringify(obj)).then(function (e) { rawSet(DOC(id, a), e); return getJ(IDX(a), []); }).then(function (L) { L = L || []; var x = L.filter(function (y) { return y.id === id; })[0]; if (x) { x.sua = now(); x.ngoai = now(); } return setJ(IDX(a), L); }); }
+    write: function (a, id, obj) { if (!LS.getItem(DOC(id, a))) return Promise.reject(new Error('Không tìm thấy hồ sơ.')); return enc(JSON.stringify(obj)).then(function (e) { rawSet(DOC(id, a), e); return getJ(IDX(a), []); }).then(function (L) { L = L || []; var x = L.filter(function (y) { return y.id === id; })[0]; if (x) { x.sua = now(); x.ngoai = now(); if (obj && obj.ctId !== undefined) x.ct = obj.ctId || ''; } return setJ(IDX(a), L); }); }
   };
   /* ---------- công trình dùng chung ---------- */
   var ct = {

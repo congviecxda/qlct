@@ -1,4 +1,4 @@
-THƯ MỤC PHÁT HÀNH – QUẢN LÝ CÔNG TRÌNH 1.0.3.0
+THƯ MỤC PHÁT HÀNH – QUẢN LÝ CÔNG TRÌNH 1.0.4.0
 
 1. Đưa TOÀN BỘ thư mục này lên địa chỉ: https://congviecxda.github.io/qlct/
    (kiểm tra: mở https://congviecxda.github.io/qlct/ phải thấy màn hình đăng nhập)
