@@ -545,7 +545,27 @@ var CVS = (function () {
   var AV = {};
   function probe() { return Promise.all(APPS.map(function (a) { if (a.id === here()) { AV[a.id] = true; return; } return fetch(url(a) + 'config.js', { method: 'HEAD', cache: 'no-store' }).then(function (r) { AV[a.id] = r.ok; }).catch(function () { AV[a.id] = false; }); })); }
   function list() { var cur = here(); return APPS.map(function (a) { return { id: a.id, ten: a.ten, mo: a.mo, ic: a.ic, url: url(a), cur: a.id === cur, co: a.id === cur || AV[a.id] === true, cho: AV[a.id] == null }; }); }
-  function open(id) { var a = list().filter(function (x) { return x.id === id; })[0]; if (!a || a.cur) return; if (!a.co && !a.cho) { alert('“' + a.ten + '” đang được xây dựng – sắp ra mắt.'); return; } location.href = a.url; }
+  /* mỗi phần mềm chạy trong 1 tab riêng (tên tab cv_<id>): chuyển phần mềm = mở/chuyển sang tab đó, tab hiện tại giữ nguyên nội dung */
+  function inOffice() { try { return typeof Office !== 'undefined' && Office.context && !!Office.context.host; } catch (e) { return false; } }
+  (function () { var h = here(); if (h && !inOffice()) { try { window.name = 'cv_' + h; } catch (e) {} }
+    var m = /[?&]tu=([\w.]+)/.exec(location.search); if (m) { try { sessionStorage.setItem('cv_tu', m[1]); } catch (e) {} try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} } })();
+  function find(id) { return list().filter(function (x) { return x.id === id; })[0]; }
+  /* mở sẵn tab (phải gọi ngay trong cú bấm, trước khi chờ mã hóa) */
+  function prep(id) { var a = find(id); if (!a || a.cur || inOffice()) return null; try { return window.open('', 'cv_' + id); } catch (e) { return null; } }
+  function loadedIn(w, id) { try { return w.location.href.toLowerCase().indexOf('/' + id.toLowerCase() + '/') >= 0; } catch (e) { return false; } }
+  /* o.w: tab đã mở sẵn · o.force: tải lại để nhận dữ liệu chuyển sang (handoff) */
+  function open(id, o) { o = o || {}; var a = find(id); if (!a || a.cur) { if (o.w && !loadedIn(o.w, id)) try { o.w.close(); } catch (e) {} return; }
+    if (!a.co && !a.cho) { if (o.w && !loadedIn(o.w, id)) try { o.w.close(); } catch (e) {} alert('“' + a.ten + '” đang được xây dựng – sắp ra mắt.'); return; }
+    var me = here(), dest = a.url + (me ? '?tu=' + encodeURIComponent(me) : '');
+    if (inOffice()) { location.href = dest; return; }
+    var w = o.w || prep(id);
+    if (!w) { location.href = dest; return; }
+    if (loadedIn(w, id) && !o.force) { try { w.sessionStorage.setItem('cv_tu', me); if (w.CVS && w.CVS.setBack) w.CVS.setBack(me); } catch (e) {} try { w.focus(); } catch (e) {} return; }
+    try { w.location.href = dest; w.focus(); } catch (e) { location.href = dest; } }
+  function backId() { try { return sessionStorage.getItem('cv_tu') || ''; } catch (e) { return ''; } }
+  function back() { var id = backId(); if (id) open(id); }
+  function setBack(id) { try { if (id) sessionStorage.setItem('cv_tu', id); } catch (e) {} drawBack(); }
+  function drawBack() { var b = document.getElementById('cvBack'), id = backId(), a = id && find(id); if (!b) return; if (!a || a.cur) { b.style.display = 'none'; return; } b.style.display = ''; b.innerHTML = '← <span>' + a.ic + ' ' + a.ten + '</span>'; b.title = 'Quay lại phần mềm ' + a.ten + ' (tab đang mở giữ nguyên nội dung)'; }
   var CSS = '#cvApps{background:transparent;border:0;color:inherit;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;cursor:pointer;margin-right:6px;flex:none}#cvApps:hover{background:rgba(255,255,255,.14)}#cvApps svg{width:20px;height:20px;fill:currentColor}' +
     '#cvPanel{position:fixed;top:52px;left:8px;z-index:10000;background:#fff;color:#1d2939;border-radius:12px;box-shadow:0 16px 48px rgba(0,0,0,.28);padding:12px;width:340px;display:none}#cvPanel.on{display:block}#cvPanel h4{margin:2px 4px 10px;font-size:13px;color:#667085;font-weight:600}' +
     '#cvPanel .ap{display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px;cursor:pointer;text-decoration:none;color:inherit}#cvPanel .ap:hover{background:#f2f5f9}#cvPanel .ap.cur{background:#eef4fc;cursor:default}#cvPanel .ap .i{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:21px;flex:none;color:#fff}#cvPanel .ap b{display:block;font-size:14px}#cvPanel .ap span{display:block;font-size:12px;color:#667085;margin-top:2px}#cvPanel .ap em{font-style:normal;font-size:11px;background:#fff4e5;color:#9a5b00;border-radius:6px;padding:1px 6px;margin-left:6px}#cvPanel .ap.soon{opacity:.6}';
@@ -553,10 +573,12 @@ var CVS = (function () {
     var h = document.querySelector('header'); if (!h || document.getElementById('cvApps')) return;
     var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     h.insertAdjacentHTML('afterbegin', '<button id="cvApps" title="Chuyển phần mềm"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="9.5" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><rect x="16" y="9.5" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><rect x="9.5" y="16" width="5" height="5" rx="1"/><rect x="16" y="16" width="5" height="5" rx="1"/></svg></button>');
+    var ap = document.getElementById('cvApps'); ap.insertAdjacentHTML('afterend', '<button id="cvBack" style="display:none;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:8px;padding:5px 10px;margin-right:10px;cursor:pointer;font-size:13px;white-space:nowrap;flex:none"></button>');
+    document.getElementById('cvBack').addEventListener('click', back); drawBack(); window.addEventListener('focus', drawBack);
     document.body.insertAdjacentHTML('beforeend', '<div id="cvPanel"><h4>PHẦN MỀM CỦA BẠN · đăng nhập dùng chung</h4><div id="cvList"></div></div>');
     function draw() { document.getElementById('cvList').innerHTML = list().map(function (a) { var A = APPS.filter(function (x) { return x.id === a.id; })[0]; return '<a class="ap' + (a.cur ? ' cur' : '') + (!a.co && !a.cho ? ' soon' : '') + '" data-app="' + a.id + '"' + (a.cur || (!a.co && !a.cho) ? '' : ' href="' + a.url + '"') + '><span class="i" style="background:' + A.mau + '">' + a.ic + '</span><div><b>' + a.ten + (a.cur ? '<em style="background:#e6f0fb;color:#1f5fa8">đang mở</em>' : !a.co && !a.cho ? '<em>Sắp ra mắt</em>' : '') + '</b><span>' + a.mo + '</span></div></a>'; }).join(''); }
     document.getElementById('cvApps').addEventListener('click', function (ev) { ev.stopPropagation(); var p = document.getElementById('cvPanel'); p.classList.toggle('on'); draw(); probe().then(draw); });
-    document.getElementById('cvPanel').addEventListener('click', function (ev) { var a = ev.target.closest('[data-app]'); if (a && !a.getAttribute('href')) { ev.preventDefault(); open(a.dataset.app); } });
+    document.getElementById('cvPanel').addEventListener('click', function (ev) { var a = ev.target.closest('[data-app]'); if (a) { ev.preventDefault(); document.getElementById('cvPanel').classList.remove('on'); open(a.dataset.app); } });
     document.addEventListener('click', function (ev) { if (!ev.target.closest('#cvPanel,#cvApps')) document.getElementById('cvPanel').classList.remove('on'); });
     probe();
   }
@@ -578,7 +600,7 @@ var CVS = (function () {
       '<p style="margin:0;color:#667085;font-size:13px">Ghi chú: nếu Google báo “ứng dụng chưa được xác minh”, bấm <b>Nâng cao → Tiếp tục</b> (ứng dụng của chính bạn). Phạm vi quyền chỉ là thư mục dữ liệu riêng của ứng dụng (drive.appdata) – không đọc được file khác trong Drive của bạn.</p>';
     d.style.display = 'flex';
   }
-  return { save: save, load: load, clear: clear, apps: list, openApp: open, probe: probe, mountUI: mountUI, mountSync: mountSync, syncGuide: syncGuide };
+  return { save: save, load: load, clear: clear, apps: list, openApp: open, prepApp: prep, back: back, backId: backId, setBack: setBack, probe: probe, mountUI: mountUI, mountSync: mountSync, syncGuide: syncGuide };
 })();
 
 /* ===== KHO DỮ LIỆU DÙNG CHUNG cho các phần mềm trên congviecxda.github.io =====
@@ -800,7 +822,7 @@ var HOST={
  imgKeys:function(){return anhTx('readonly',function(st){return st.getAllKeys()})},
  info:function(){return {chuSoHuu:CFG.chuSoHuu||'',lienHe:CFG.lienHe||'',user:USER,fp:'',lic:LIC||{}}},
  logout:function(){CVS.clear();location.reload()},
- apps:function(){return CVS.apps()},openApp:function(id){CVS.openApp(id)},
+ apps:function(){return CVS.apps()},openApp:function(id,o){CVS.openApp(id,o)},prepApp:function(id){return CVS.prepApp(id)},back:function(){CVS.back()},backId:function(){return CVS.backId()},
  deactivate:function(){location.reload()},
  showLicense:function(){var kv=[['Tên đăng nhập',USER],['Chủ sở hữu',CFG.chuSoHuu||'—'],['Phiên bản',CFG.ver||'—'],['Nơi lưu dữ liệu',HOST.inExcel?'Mã hóa trong file Excel đang mở':'Mã hóa trong trình duyệt']];
   $('#licKV').innerHTML=kv.map(function(x){return '<div>'+x[0]+'</div><div>'+String(x[1]).replace(/</g,'&lt;')+'</div>'}).join('');$('#lic').classList.add('on')}
