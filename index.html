@@ -664,6 +664,8 @@ function CVSTORE(X) {
     read: function (a, id) { var r = LS.getItem(DOC(id, a)); return r ? dec(r).then(function (t) { return JSON.parse(t); }) : Promise.resolve(null); },
     listOf: function (a) { return list(a); },
     /* ghi hồ sơ của phần mềm khác (cùng bộ khóa) – dùng cho đồng bộ thông tin công trình từ PM Quản lý công trình */
+    /* tạo hồ sơ mới cho phần mềm khác (vd: QLCT nhập HĐ từ file → lưu thành hồ sơ PM HĐ A–B) */
+    add: function (a, obj, m) { var id = uid(); return enc(JSON.stringify(obj)).then(function (e) { rawSet(DOC(id, a), e); return getJ(IDX(a), []); }).then(function (L) { L = L || []; L.push(Object.assign({ id: id, tao: now(), sua: now() }, m || {})); return setJ(IDX(a), L); }).then(function () { return id; }); },
     write: function (a, id, obj) { if (!LS.getItem(DOC(id, a))) return Promise.reject(new Error('Không tìm thấy hồ sơ.')); return enc(JSON.stringify(obj)).then(function (e) { rawSet(DOC(id, a), e); return getJ(IDX(a), []); }).then(function (L) { L = L || []; var x = L.filter(function (y) { return y.id === id; })[0]; if (x) { x.sua = now(); x.ngoai = now(); if (obj && obj.ctId !== undefined) x.ct = obj.ctId || ''; } return setJ(IDX(a), L); }); }
   };
   /* ---------- công trình dùng chung ---------- */
@@ -808,7 +810,7 @@ var HOST={
  libLoad:function(name){return ST.libLoad(name)},
  libSave:function(name,text){return ST.libSave(name,text)},
  /* nhiều hồ sơ · công trình dùng chung · chuyển giao giữa các phần mềm · đồng bộ */
- docs:{list:function(a){return ST.docs.list(a)},cur:function(){return ST.docs.cur()},open:function(id){return ST.docs.open(id)},create:function(t,m){return ST.docs.create(t,m)},remove:function(id){return ST.docs.remove(id)},read:function(a,id){return ST.docs.read(a,id)},listOf:function(a){return ST.docs.listOf(a)},write:function(a,id,o){return ST.docs.write(a,id,o)}},
+ docs:{list:function(a){return ST.docs.list(a)},cur:function(){return ST.docs.cur()},open:function(id){return ST.docs.open(id)},create:function(t,m){return ST.docs.create(t,m)},remove:function(id){return ST.docs.remove(id)},read:function(a,id){return ST.docs.read(a,id)},listOf:function(a){return ST.docs.listOf(a)},write:function(a,id,o){return ST.docs.write(a,id,o)},add:function(a,o,m){return ST.docs.add(a,o,m)}},
  ct:{list:function(){return ST.ct.list()},save:function(L){return ST.ct.save(L)},upsert:function(o){return ST.ct.upsert(o)}},
  handoff:{put:function(o){return ST.handoff.put(o)},take:function(to){return ST.handoff.take(to)}},
  onRemote:function(f){ST.onRemote(f)},
